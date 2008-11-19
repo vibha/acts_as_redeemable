@@ -37,6 +37,112 @@ module Squeejee  #:nodoc:
           end
           include InstanceMethods
           
+          #################### SOME EXTRA FUNCTIONALITY FOR COUPONS
+          
+          
+          # Checks the database to ensure whether any order is attached to the coupon
+          def coupon_attached?
+            return true if self.orders 
+          end       
+          
+          #Ensures whether to calculate the discount price or not
+          def check
+            if coupon_attached?
+              self.orders.each do |order| 
+                calculate_discount_price(order)
+              end
+            end    
+          end  
+          
+          #when to calculate the discount price
+          def calculate_discount_price(order)
+            if self.is_valid
+              if checked_for_dates
+                if checked_for_order_price
+                  if checked_for_quantity
+                    if self.span and order.line_items.collect{|c| c.quantity}.sum >= self.min_qty
+                      if checked_for_products_and_categories(order)
+                        calculate_discount_looking_their_type(self, order)
+                        self.update_attribute(:is_valid => false) if self.one_time
+                      end  
+                    end
+                  end
+                end
+              end
+            end            
+          end                  
+          
+          def checked_for_products_and_categories(order)
+            psku_ids = []
+            pcat_ids = []
+            osku_ids = []
+            ocat_ids = []
+            self.products.each do |p|
+              psku_ids << p.sku_ids
+              pcat_ids << s.product.category_ids
+            end                            
+            order.line_items.each do |l|
+              osku_ids << l.sku.id
+              ocat_ids << l.sku.product.category_ids
+            end  
+            return true if psku_ids.flatten == osku_ids.flatten and pcat_ids.flatten == ocat_ids.flatten
+          end  
+                
+          def checked_for_dates
+            if self.begin_date or self.expires_on
+              return self.begin_date <= order.created_at or order.created_at <= self.expires_on   
+            elsif self.begin_date and self.expires_on
+              return self.begin_date <= order.created_at and order.created_at <= self.expires_on
+            elsif !self.begin_date and !self.expires_on
+              return true
+            else
+              return false  
+            end  
+          end
+          
+          def checked_for_order_price
+            if self.min_order_price or self.max_order_price
+              return self.min_order_price <= order.total_amount or order.total_amount <= self.max_order_price
+            elsif self.min_order_price and self.max_order_price
+              return self.min_order_price <= order.total_amount and order.total_amount <= self.max_order_price
+            elsif !self.min_order_price and !self.max_order_price
+              return true
+            else
+              return false  
+            end  
+          end          
+            
+          def checked_for_quantity
+            order.line_items.each do |item|
+              if self.min_qty or self.max_qty
+                return self.min_qty <= item.quantity or item.quantity <= self.max_qty
+              elsif self.min_qty and self.max_qty
+                return self.min_qty <= item.quantity or item.quantity <= self.max_qty
+              elsif !self.min_qty and !self.max_qty
+                return true
+              elsif !self.span and  item.quantity >= self.min_qty 
+                return true
+              else
+                return false
+              end
+            end    
+          end  
+        
+          #calculates the total number of units in order
+          def total_items(order)
+            order.line_items.collect{|c| c.quantity}.sum
+          end
+          
+          #calculates discount according to discount types
+          def calculate_discount_looking_their_type(coupon, order)
+            if coupon.discount_type == "PERCENT OFF A PRODUCT"
+              return coupon.discount_value * order.price/100
+            end 
+          end  
+          
+          #################### END OF SOME EXTRA FUNCTIONALITY FOR COUPONS 
+          
+          
           # Generates an alphanumeric code using an MD5 hash
           # * +code_length+ - number of characters to return
           def generate_code(code_length=6)
