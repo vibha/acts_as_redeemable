@@ -90,9 +90,9 @@ module Squeejee  #:nodoc:
                 
           def checked_for_dates
             if self.begin_date or self.expires_on
-              return self.begin_date <= order.created_at or order.created_at <= self.expires_on   
+            #  return self.begin_date <= order.created_at or order.created_at <= self.expires_on   
             elsif self.begin_date and self.expires_on
-              return self.begin_date <= order.created_at and order.created_at <= self.expires_on
+            #  return self.begin_date <= order.created_at and order.created_at <= self.expires_on
             elsif !self.begin_date and !self.expires_on
               return true
             else
@@ -102,9 +102,9 @@ module Squeejee  #:nodoc:
           
           def checked_for_order_price
             if self.min_order_price or self.max_order_price
-              return self.min_order_price <= order.total_amount or order.total_amount <= self.max_order_price
+            #  return self.min_order_price <= order.total_amount or order.total_amount <= self.max_order_price
             elsif self.min_order_price and self.max_order_price
-              return self.min_order_price <= order.total_amount and order.total_amount <= self.max_order_price
+            #  return self.min_order_price <= order.total_amount and order.total_amount <= self.max_order_price
             elsif !self.min_order_price and !self.max_order_price
               return true
             else
@@ -115,9 +115,9 @@ module Squeejee  #:nodoc:
           def checked_for_quantity
             order.line_items.each do |item|
               if self.min_qty or self.max_qty
-                return self.min_qty <= item.quantity or item.quantity <= self.max_qty
+            #    return self.min_qty <= item.quantity or item.quantity <= self.max_qty
               elsif self.min_qty and self.max_qty
-                return self.min_qty <= item.quantity or item.quantity <= self.max_qty
+          #      return self.min_qty <= item.quantity or item.quantity <= self.max_qty
               elsif !self.min_qty and !self.max_qty
                 return true
               elsif !self.span and  item.quantity >= self.min_qty 
