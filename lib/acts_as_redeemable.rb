@@ -116,10 +116,10 @@ module Squeejee  #:nodoc:
         #calculates the discount price after testing all the options
         def calculate_discount_price(cart, total_amount)
            tdiscount = 0
-          if self.accept_more and self.is_valid and checked_for_dates and checked_for_order_price(total_amount) and checked_for_span(cart) 
+          if self.is_valid and checked_for_dates and checked_for_order_price(total_amount)  
             self.update_attribute("is_valid", false) if self.one_time
             cart.cart_items.each do |item|
-              if quantity_of_item_is_valid(item) and product_is_valid(item) and category_is_valid(item) 
+              if quantity_of_item_is_valid(item) and product_is_valid(item) and category_is_valid(item) and checked_for_span(cart, item)
                 tdiscount += calculate_discount_looking_their_type(item) 
              end  
             end
@@ -157,14 +157,14 @@ module Squeejee  #:nodoc:
           end  
         end  
         
-        def checked_for_span(cart)
+        def checked_for_span(cart, item)
           if self.span
             unless self.min_qty
               self.min_qty = 0
             end  
             cart.cart_items.sum { |item| item[:count] } >= self.min_qty   
           else
-            return false
+            item[:count] >= self.min_qty
           end    
         end  
         
@@ -213,8 +213,8 @@ module Squeejee  #:nodoc:
         
         def checked_for_order_price(total_amount)
           if self.min_order_price or self.max_order_price
-            self.min_order_price <= total_amount if self.min_order_price
-            total_amount <= self.max_order_price if self.max_order_price  
+            return self.min_order_price <= total_amount if self.min_order_price
+            return total_amount <= self.max_order_price if self.max_order_price  
           elsif self.min_order_price and self.max_order_price
             self.min_order_price <= total_amount and total_amount <= self.max_order_price
           elsif !self.min_order_price and !self.max_order_price
