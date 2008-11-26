@@ -98,30 +98,17 @@ module Squeejee  #:nodoc:
         
         #################### SOME EXTRA FUNCTIONALITY FOR COUPONS
         
-        
-        # Checks the database to ensure whether any order is attached to the coupon
-      #  def coupon_attached?
-        #  return true if self.orders 
-     #   end       
-        
-        #Ensures whether to calculate the discount price or not
-    #    def check
-    #      if coupon_attached?
-     #       self.orders.each do |order| 
-    #          calculate_discount_price(order)
-     #       end
-    #      end    
-    #    end  
-        
         #calculates the discount price after testing all the options
         def calculate_discount_price(cart, total_amount)
            tdiscount = 0
           if self.is_valid and checked_for_dates and checked_for_order_price(total_amount)  
             self.update_attribute("is_valid", false) if self.one_time
             cart.cart_items.each do |item|
-              if quantity_of_item_is_valid(item) and product_is_valid(item) and category_is_valid(item) and checked_for_span(cart, item)
-                tdiscount += calculate_discount_looking_their_type(item) 
-             end  
+              if item[:item_type] == "Sku"
+                if quantity_of_item_is_valid(item) and product_is_valid(item) and category_is_valid(item) and checked_for_span(cart, item)
+                  tdiscount += calculate_discount_looking_their_type(item, total_amount) 
+                end  
+              end  
             end
           end  
           return tdiscount
@@ -132,12 +119,12 @@ module Squeejee  #:nodoc:
           self.products.each do |p|
             psku_ids << p.sku_ids
           end
-          psku_ids.flatten.include?(item[:id]) if psku_ids
+          psku_ids.flatten.include?(item[:item_id]) if psku_ids
         end  
         
         def category_is_valid(item)
           pcat_ids = []
-          sku = Sku.find_by_id(item[:id])
+          sku = Sku.find_by_id(item[:item_id])
           self.products.each do |p|
             pcat_ids << p.category_ids
           end  
@@ -159,46 +146,11 @@ module Squeejee  #:nodoc:
         
         def checked_for_span(cart, item)
           if self.span
-            unless self.min_qty
-              self.min_qty = 0
-            end  
             cart.cart_items.sum { |item| item[:count] } >= self.min_qty   
           else
             item[:count] >= self.min_qty
           end    
-        end  
-        
-      #  def checked_for_products(cart)
-      #    psku_ids = []
-       #   osku_ids = []
-       #   self.products.each do |p|
-       #     psku_ids << p.sku_ids
-       #   end  
-       #   cart.cart_items.each do |l|
-        #    osku_ids << l[:id]
-        #  end                          
-        #  if psku_ids.flatten == osku_ids.flatten
-        #    return true
-        #  else
-        #    return false
-       #   end
-       # end  
-              
-      #  def checked_for_categories(cart)      
-      #    pcat_ids = []
-      #    ocat_ids = []
-      #    self.products.each do |p|
-      #      pcat_ids << p.category_ids
-      #    end
-      #    cart.cart_items.each do |l|
-      #      ocat_ids << Sku.find_by_id(l[:id]).product.category_ids
-      #    end
-      #    if pcat_ids.flatten == ocat_ids.flatten
-       #     return true
-      #    else
-       #     return false
-       #   end    
-       # end     
+        end    
               
         def checked_for_dates
           if self.begin_date or self.expires_on
@@ -223,25 +175,24 @@ module Squeejee  #:nodoc:
         end          
           
         def quantity_of_item_is_valid(item)
-            if self.min_qty or self.max_qty
-              self.min_qty <= item[:count] if self.min_qty
-              item[:count] <= self.max_qty if self.max_qty
-            elsif self.min_qty and self.max_qty
-              self.min_qty <= item[:count] and item[:count] <= self.max_qty  
-            elsif !self.min_qty and !self.max_qty
+            if self.max_qty
+              self.min_qty <= item[:count] <= self.max_qty  
+            else 
               return true
             end 
-        end  
-      
-        #calculates the total number of units in order
-        def total_items(order)
-          order.line_items.collect{|c| c.quantity}.sum
-        end
+        end 
         
         #calculates discount according to discount types
-        def calculate_discount_looking_their_type(item)
-          if self.discount_type.name == "Percent of a product"
-            discount = self.discount_value * item[:price] / 100
+        def calculate_discount_looking_their_type(item, total_amount)
+          case self.discount_type.name
+            when "Percent of a product"
+              discount = self.discount_value * item[:price] / 100
+            when "Percent off entire order"
+              discount = self.discount_value * total_amount / 100
+            when "Dollar amount off a product" 
+              discount = item[:price] - self.discount_value
+            when "Dollar amount off an entire order" 
+              discount = total_amount - self.discount_value
           end 
         end  
         
