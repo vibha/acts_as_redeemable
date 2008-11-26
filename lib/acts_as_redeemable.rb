@@ -176,7 +176,7 @@ module Squeejee  #:nodoc:
           
         def quantity_of_item_is_valid(item)
             if self.max_qty
-              self.min_qty <= item[:count] <= self.max_qty  
+              self.min_qty <= item[:count] and item[:count] <= self.max_qty  
             else 
               return true
             end 
