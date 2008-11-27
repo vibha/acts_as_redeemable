@@ -102,7 +102,7 @@ module Squeejee  #:nodoc:
         def calculate_discount_price(cart, total_amount)
            tdiscount = 0
           if self.is_valid and checked_for_dates and checked_for_order_price(total_amount)  
-            self.update_attribute("is_valid", false) if self.one_time
+            #self.update_attribute("is_valid", false) if self.one_time
             cart.cart_items.each do |item|
               if item[:item_type] == "Sku"
                 if quantity_of_item_is_valid(item) and product_is_valid(item) and category_is_valid(item) and checked_for_span(cart, item)
@@ -116,10 +116,14 @@ module Squeejee  #:nodoc:
         
         def product_is_valid(item)
           psku_ids = []
-          self.products.each do |p|
-            psku_ids << p.sku_ids
-          end
-          psku_ids.flatten.include?(item[:item_id]) if psku_ids
+          if self.products
+            self.products.each do |p|
+              psku_ids << p.sku_ids
+            end
+            psku_ids.flatten.include?(item[:item_id]) if psku_ids
+          else
+            return true
+          end    
         end  
         
         def category_is_valid(item)
@@ -128,19 +132,19 @@ module Squeejee  #:nodoc:
           self.products.each do |p|
             pcat_ids << p.category_ids
           end  
-          if sku
-            if pcat_ids and sku.product.category_ids
+          if pcat_ids
+            if sku and sku.product.category_ids
               arr = pcat_ids.flatten - sku.product.category_ids
               if arr.size == pcat_ids.flatten.size
                 return false
               else
                 return true
-              end     
+              end         
             else
               return false
             end
           else    
-            return false  
+            return true  
           end  
         end  
         
