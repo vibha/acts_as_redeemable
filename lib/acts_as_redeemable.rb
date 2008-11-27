@@ -116,7 +116,7 @@ module Squeejee  #:nodoc:
         
         def product_is_valid(item)
           psku_ids = []
-          if self.products
+          if self.products.size > 0
             self.products.each do |p|
               psku_ids << p.sku_ids
             end
@@ -129,10 +129,12 @@ module Squeejee  #:nodoc:
         def category_is_valid(item)
           pcat_ids = []
           sku = Sku.find_by_id(item[:item_id])
-          self.products.each do |p|
-            pcat_ids << p.category_ids
+          if self.products and self.products.size > 0
+            self.products.each do |p|
+              pcat_ids << p.category_ids
+            end  
           end  
-          if pcat_ids
+          if pcat_ids and pcat_ids.size > 0
             if sku and sku.product.category_ids
               arr = pcat_ids.flatten - sku.product.category_ids
               if arr.size == pcat_ids.flatten.size
