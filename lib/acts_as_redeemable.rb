@@ -98,7 +98,7 @@ module Squeejee  #:nodoc:
         
         #################### SOME EXTRA FUNCTIONALITY FOR COUPONS
         
-        #calculates the discount price after testing all the options
+        #calculates the total discount price on entire cart 
         def calculate_discount_price(cart, total_amount)
            tdiscount = 0
           if self.is_valid and checked_for_dates and checked_for_order_price(total_amount)  
@@ -191,7 +191,7 @@ module Squeejee  #:nodoc:
         #calculates discount according to discount types
         def calculate_discount_looking_their_type(item, total_amount)
           case self.discount_type.name
-            when "Percent of a product"
+            when "Percent off a product"
               discount = self.discount_value * item[:price] / 100
             when "Percent off entire order"
               discount = self.discount_value * total_amount / 100
