@@ -102,7 +102,6 @@ module Squeejee  #:nodoc:
         def calculate_discount_price(cart, total_amount)
            tdiscount = 0
           if self.is_valid and checked_for_dates and checked_for_order_price(total_amount)  
-            #self.update_attribute("is_valid", false) if self.one_time
             cart.cart_items.each do |item|
               if item[:item_type] == "Sku"
                 if quantity_of_item_is_valid(item) and product_is_valid(item) and category_is_valid(item) and checked_for_span(cart, item)
@@ -111,7 +110,11 @@ module Squeejee  #:nodoc:
               end  
             end
           end  
-          return tdiscount
+          if tdiscount < 0
+            return 0
+          else  
+            return tdiscount
+          end
         end          
         
         def product_is_valid(item)
@@ -191,7 +194,7 @@ module Squeejee  #:nodoc:
         #calculates discount according to discount types
         def calculate_discount_looking_their_type(item, total_amount)
           case self.discount_type.name
-            when "Percent off a product"
+            when "Percent of a product"
               discount = self.discount_value * item[:price] / 100
             when "Percent off entire order"
               discount = self.discount_value * total_amount / 100
