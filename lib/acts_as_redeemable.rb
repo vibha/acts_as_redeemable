@@ -145,7 +145,7 @@ module Squeejee  #:nodoc:
           if self.products.blank? and self.categories.blank?
             return true
           elsif self.products.size > 0 and self.categories.size > 0
-             collect_sku_ids_from_products.flatten.include?(item[:item_id]) or collect_sku_ids_from_categories.include?(item[:item_id])
+             collect_sku_ids_from_products.flatten.include?(item[:item_id]) or collect_sku_ids_from_categories.flatten.include?(item[:item_id])
           elsif self.products.size > 0
             collect_sku_ids_from_products.flatten.include?(item[:item_id])
           elsif self.categories.size > 0   
