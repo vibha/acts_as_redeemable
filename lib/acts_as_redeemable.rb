@@ -194,7 +194,7 @@ module Squeejee  #:nodoc:
         #calculates discount according to discount types
         def calculate_discount_looking_their_type(item, total_amount)
           case self.discount_type.name
-            when "Percent of a product"
+            when "Percent off a product"
               discount = self.discount_value * item[:price] / 100
             when "Percent off entire order"
               discount = self.discount_value * total_amount / 100
