@@ -90,7 +90,7 @@ module Squeejee  #:nodoc:
         end
 
         def setup_new #:nodoc:
-          self.code = self.class.generate_unique_code
+          self.code = self.class.generate_unique_code if self.code.blank?
           unless self.class.valid_for.nil? or self.expires_on?
             self.expires_on = self.created_at + self.class.valid_for
           end
