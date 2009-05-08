@@ -1,7 +1,8 @@
-require 'test/unit'
-require File.expand_path(File.join(File.dirname(__FILE__), '../../../../config/environment.rb'))
-require File.dirname(__FILE__) + '/../lib/acts_as_redeemable'
-load(File.dirname(__FILE__) + "/schema.rb")
+ require 'test/unit'
+# require 'active_record'
+# require File.expand_path(File.join(File.dirname(__FILE__), '../../../../config/environment.rb'))
+# require File.dirname(__FILE__) + '/../lib/acts_as_redeemable'
+# load(File.dirname(__FILE__) + "/schema.rb")
 
 class FreeTodayCoupon < ActiveRecord::Base
   acts_as_redeemable
@@ -9,6 +10,8 @@ class FreeTodayCoupon < ActiveRecord::Base
 end
 
 class ActsAsRedeemableTest < Test::Unit::TestCase
+  require File.dirname(__FILE__) + '/../test_helper'
+  
   # Replace this with your real tests.
   def test_should_generate_six_digit_code
     assert_equal FreeTodayCoupon.generate_unique_code.length, 6

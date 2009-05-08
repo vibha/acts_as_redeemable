@@ -36,10 +36,6 @@ module Squeejee  #:nodoc:
             self.code_length = (options[:code_length].nil? ? 6 : options[:code_length])
           end
           include InstanceMethods
-          
-          
-          
-          
           # Generates an alphanumeric code using an MD5 hash
           # * +code_length+ - number of characters to return
           def generate_code(code_length=6)
@@ -60,7 +56,6 @@ module Squeejee  #:nodoc:
           def active_code?(code)
             find :first, :conditions => {:code => code}
           end
-
         end
         
         def redeemable? #:nodoc:
@@ -97,47 +92,45 @@ module Squeejee  #:nodoc:
         end
         
         #################### SOME EXTRA FUNCTIONALITY FOR COUPONS
+        # This functionality is used when the coupon is applied to any product or item under certain conditions like: 
+        
+        # Minimum or Maximum Quantity of product
+        # Minimum or Maximum order price
+        # Begin and End dates for the coupon
+        # Calculating the discount after looking the type of discount e.g. Dollar amount off a product
+        # Can be used with any other coupon
+        # Coupon can be applied to some distinct products or categories of products     
+        # Span is given for coupon i.e. if not checked item count should be greater than min qty of item
+        
         
         #calculates the total discount price on entire cart 
         def calculate_discount_price(cart, total_amount)
-           tdiscount = 0
-           if self.is_valid and checked_for_dates and checked_for_order_price(total_amount)  
-             if self.discount_type.name == "Percent off a product" or self.discount_type.name == "Dollar amount off a product" 
-                cart.cart_items.each do |item|
-                  if item[:item_type] == "Sku"
-                    if quantity_of_item_is_valid(item) and product_is_valid(item) and checked_for_span(cart, item)
-                      item[:count].times do
-                        tdiscount += self.discount_value if self.discount_type.name == "Dollar amount off a product" 
-                        tdiscount += self.discount_value * item[:price] / 100 if self.discount_type.name == "Percent off a product"
-                      end  
-                    end  
+          tdiscount = 0
+          if self.is_valid and checked_for_dates and checked_for_order_price(total_amount)  
+           if self.discount_type.name == "Percent off a product" or self.discount_type.name == "Dollar amount off a product" 
+             cart.cart_items.each do |item|
+              if item[:item_type] == "Sku"
+                if quantity_of_item_is_valid(item) and product_is_valid(item) and checked_for_span(cart, item)
+                  item[:count].times do
+                    tdiscount += self.discount_value if self.discount_type.name == "Dollar amount off a product" 
+                    tdiscount += self.discount_value * item[:price] / 100 if self.discount_type.name == "Percent off a product"
                   end  
-                end                
-             elsif self.discount_type.name == "Percent off entire order" or self.discount_type.name == "Dollar amount off an entire order" 
-               if checked_all_conditions_on_each_item_of_entire_cart(cart)
-                 tdiscount = self.discount_value * total_amount / 100 if self.discount_type.name == "Percent off entire order"
-                 tdiscount = self.discount_value if self.discount_type.name == "Dollar amount off an entire order" 
-               else
-                 tdiscount = 0
-               end   
-             end
-           end  
-           if tdiscount < 0
-             return 0
-           else  
-             return tdiscount
+                end  
+              end  
+            end                
+           elsif self.discount_type.name == "Percent off entire order" or self.discount_type.name == "Dollar amount off an entire order" 
+            if checked_all_conditions_on_each_item_of_entire_cart(cart)
+              tdiscount = self.discount_value * total_amount / 100 if self.discount_type.name == "Percent off entire order"
+              tdiscount = self.discount_value if self.discount_type.name == "Dollar amount off an entire order" 
+            end   
            end
+          end  
+          return tdiscount < 0 ? 0 : tdiscount
         end          
 
         def checked_all_conditions_on_each_item_of_entire_cart(cart)
           cart.cart_items.each do |item|
-            if item[:item_type] == "Sku"
-              if quantity_of_item_is_valid(item) and product_is_valid(item) and checked_for_span(cart, item)
-                return true
-              else
-                return false  
-              end  
-            end  
+            return (quantity_of_item_is_valid(item) and product_is_valid(item) and checked_for_span(cart, item)) ? true : false if item[:item_type] == "Sku"
           end
         end  
 
@@ -145,40 +138,20 @@ module Squeejee  #:nodoc:
           if self.products.blank? and self.categories.blank?
             return true
           elsif self.products.size > 0 and self.categories.size > 0
-             collect_sku_ids_from_products.flatten.include?(item[:item_id]) or collect_sku_ids_from_categories.flatten.include?(item[:item_id])
+             self.sku_ids.include?(item[:item_id]) or collect_sku_ids_from_categories.include?(item[:item_id])
           elsif self.products.size > 0
-            collect_sku_ids_from_products.flatten.include?(item[:item_id])
+            self.sku_ids.include?(item[:item_id])
           elsif self.categories.size > 0   
-            collect_sku_ids_from_categories.flatten.include?(item[:item_id]) 
+            collect_sku_ids_from_categories.include?(item[:item_id]) 
           end    
-        end  
-
-        def collect_sku_ids_from_products
-          psku_ids = []
-          self.products.each do |p|
-             psku_ids << p.sku_ids if p.sku_ids
-          end
-          return psku_ids
         end  
 
         def collect_sku_ids_from_categories
-          csku_ids = []
-          self.categories.each do |c|
-            if c.products 
-               c.products.each do |cp| 
-                 csku_ids << cp.sku_ids if cp.sku_ids   
-               end 
-            end   
-          end
-          return csku_ids
+          return Sku.find_by_sql("SELECT DISTINCT skus.id FROM skus INNER JOIN categories_products ON categories_products.product_id = skus.product_id WHERE categories_products.category_id IN (#{self.category_ids}) ").collect{|s| s.id}
         end 
 
         def checked_for_span(cart, item)
-          if self.span
-            cart.cart_items.sum { |item| item[:count] } >= self.min_qty   
-          else
-            item[:count] >= self.min_qty
-          end    
+          return self.span ? cart.cart_items.sum { |item| item[:count] } >= self.min_qty : item[:count] >= self.min_qty
         end    
 
         def checked_for_dates
@@ -197,46 +170,17 @@ module Squeejee  #:nodoc:
 
         def checked_for_order_price(total_amount)
           if self.min_order_price or self.max_order_price
-            self.min_order_price <= total_amount and total_amount <= self.max_order_price if self.min_order_price and self.max_order_price
+            return (self.min_order_price <= total_amount and total_amount <= self.max_order_price) if self.min_order_price and self.max_order_price
             return self.min_order_price <= total_amount if self.min_order_price
             return total_amount <= self.max_order_price if self.max_order_price  
-          elsif !self.min_order_price and !self.max_order_price
+          else
             return true
           end  
         end          
 
         def quantity_of_item_is_valid(item)
-          if self.max_qty
-            self.min_qty <= item[:count] and item[:count] <= self.max_qty  
-          else 
-            return true
-          end 
+          return self.max_qty ? (self.min_qty <= item[:count] and item[:count] <= self.max_qty) : true
         end
-        
-        #def category_is_valid(item)
-        #  pcat_ids = []
-        #  sku = Sku.find_by_id(item[:item_id])
-         # if self.products and self.products.size > 0
-         #   self.products.each do |p|
-          #    pcat_ids << p.category_ids
-          #  end  
-         # end  
-         # if pcat_ids and pcat_ids.size > 0
-        #    if sku and sku.product.category_ids
-        #      arr = pcat_ids.flatten - sku.product.category_ids
-        #      if arr.size == pcat_ids.flatten.size
-        #        return false
-       #       else
-        #        return true
-       #       end         
-       #     else
-       #       return false
-        #    end
-       #   else    
-       #     return true  
-       #   end  
-      #  end  
-        
         
         #################### END OF SOME EXTRA FUNCTIONALITY FOR COUPONS
         
